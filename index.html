@@ -1,1 +1,185 @@
-ciao
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Olimpiadi Live</title>
+
+<style>
+:root {
+  --bg: #050b18;
+  --accent: #00c6ff;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(circle at top, #0b1c2d, var(--bg));
+  color: white;
+  font-family: "Segoe UI", Arial, sans-serif;
+  overflow: hidden;
+}
+
+.slide {
+  display: none;
+  padding: 4vh 6vw;
+  height: 100vh;
+}
+
+.slide.active {
+  display: block;
+  animation: fade 1s ease-in-out;
+}
+
+@keyframes fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+header {
+  font-size: 4vh;
+  font-weight: bold;
+  margin-bottom: 3vh;
+  border-left: 8px solid var(--accent);
+  padding-left: 1vw;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 2vh;
+}
+
+.card {
+  background: rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 2vh;
+  font-size: 2.2vh;
+}
+
+.medal-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.medal-row img {
+  width: 40px;
+  height: auto;
+  border-radius: 4px;
+}
+
+footer {
+  position: absolute;
+  bottom: 1vh;
+  right: 2vw;
+  font-size: 1.6vh;
+  opacity: 0.6;
+}
+</style>
+</head>
+
+<body>
+
+<section id="medals" class="slide active">
+  <header>🏅 Medagliere Olimpico</header>
+  <div class="grid" id="medalsContent"></div>
+</section>
+
+<section id="events" class="slide">
+  <header>🏟️ Eventi Principali</header>
+  <div class="grid" id="eventsContent"></div>
+</section>
+
+<section id="news" class="slide">
+  <header>📰 Notizie Olimpiche</header>
+  <div class="grid" id="newsContent"></div>
+</section>
+
+<footer>LIVE – API PUBBLICHE</footer>
+
+<script>
+/* ================= MEDAGLIE + BANDIERE ================= */
+async function loadMedals() {
+  const res = await fetch("https://apis.codante.io/olympic-games/countries");
+  const json = await res.json();
+
+  const c = document.getElementById("medalsContent");
+  c.innerHTML = "";
+
+  json.data
+    .filter(x => x.gold + x.silver + x.bronze > 0)
+    .sort((a,b) => b.gold - a.gold)
+    .slice(0, 12)
+    .forEach(n => {
+      c.innerHTML += `
+        <div class="card">
+          <div class="medal-row">
+            <img src="https://flagcdn.com/w40/${n.code.toLowerCase()}.png" alt="${n.name}">
+            <strong>${n.name}</strong>
+          </div>
+          <br>
+          🥇 ${n.gold} &nbsp; 🥈 ${n.silver} &nbsp; 🥉 ${n.bronze}
+        </div>
+      `;
+    });
+}
+
+/* ================= EVENTI ================= */
+async function loadEvents() {
+  const res = await fetch("https://apis.codante.io/olympic-games/events");
+  const json = await res.json();
+
+  const c = document.getElementById("eventsContent");
+  c.innerHTML = "";
+
+  json.data.slice(0, 8).forEach(e => {
+    c.innerHTML += `
+      <div class="card">
+        <strong>${e.sport}</strong><br><br>
+        ${e.name}
+      </div>
+    `;
+  });
+}
+
+/* ================= NOTIZIE (WIKIPEDIA) ================= */
+async function loadNews() {
+  const res = await fetch(
+    "https://it.wikipedia.org/api/rest_v1/page/summary/Olimpiadi"
+  );
+  const json = await res.json();
+
+  const c = document.getElementById("newsContent");
+  c.innerHTML = `
+    <div class="card">
+      <strong>${json.title}</strong><br><br>
+      ${json.extract}<br><br>
+      <small>Fonte: Wikipedia</small>
+    </div>
+  `;
+}
+
+/* ================= SLIDER ================= */
+const slides = document.querySelectorAll(".slide");
+let index = 0;
+
+setInterval(() => {
+  slides[index].classList.remove("active");
+  index = (index + 1) % slides.length;
+  slides[index].classList.add("active");
+}, 15000);
+
+/* ================= INIT ================= */
+loadMedals();
+loadEvents();
+loadNews();
+
+setInterval(() => {
+  loadMedals();
+  loadEvents();
+  loadNews();
+}, 600000);
+</script>
+
+</body>
+</html>
