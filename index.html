@@ -44,6 +44,11 @@
             font-weight: bold;
         }
 
+        .date-sub {
+            font-size: 1em;
+            opacity: 0.9;
+        }
+
         .live-indicator {
             background: #ff0000;
             color: white;
@@ -289,17 +294,6 @@
             font-size: 1.1em;
         }
 
-        .error-message {
-            background: rgba(255,100,100,0.2);
-            border: 2px solid #ff6b6b;
-            padding: 30px;
-            border-radius: 15px;
-            margin: 40px;
-            text-align: center;
-            font-size: 1.3em;
-            line-height: 1.6;
-        }
-
         .info-message {
             background: rgba(59,130,246,0.2);
             border: 2px solid #3b82f6;
@@ -311,28 +305,32 @@
             line-height: 1.6;
         }
 
-        .debug-log {
+        .status-bar {
             position: fixed;
-            bottom: 10px;
-            left: 10px;
+            top: 80px;
+            right: 10px;
             background: rgba(0,0,0,0.8);
             color: #0f0;
-            padding: 10px;
+            padding: 10px 15px;
             border-radius: 5px;
-            font-family: monospace;
             font-size: 0.9em;
-            max-width: 500px;
-            max-height: 200px;
-            overflow-y: auto;
-            display: none;
+            font-family: monospace;
+            z-index: 1000;
+        }
+
+        .status-bar.error {
+            color: #f00;
         }
     </style>
 </head>
 <body>
+    <div class="status-bar" id="statusBar">Inizializzazione...</div>
+
     <div class="header">
         <div class="logo">🏔️ MILANO-CORTINA 2026</div>
         <div class="date-info">
             <div class="date-main">Sabato 7 Febbraio 2026</div>
+            <div class="date-sub">Giorno 1 delle Olimpiadi</div>
         </div>
         <div class="live-indicator">🔴 LIVE</div>
     </div>
@@ -345,7 +343,7 @@
             <div class="medals-grid" id="medalsContent">
                 <div class="loading">
                     <div class="spinner"></div>
-                    Connessione alle API olimpiche...
+                    Web scraping da Olympics.com...
                 </div>
             </div>
             <div class="slide-indicator">1 / 3</div>
@@ -376,64 +374,74 @@
         </div>
     </div>
 
-    <div class="debug-log" id="debugLog"></div>
-
     <script>
         const COUNTRY_NAMES_IT = {
-            'USA': 'Stati Uniti', 'GER': 'Germania', 'CAN': 'Canada', 'NOR': 'Norvegia',
-            'AUT': 'Austria', 'SUI': 'Svizzera', 'NED': 'Paesi Bassi', 'SWE': 'Svezia',
-            'FRA': 'Francia', 'ITA': 'Italia', 'JPN': 'Giappone', 'KOR': 'Corea del Sud',
-            'CHN': 'Cina', 'RUS': 'Russia', 'GBR': 'Gran Bretagna', 'FIN': 'Finlandia',
-            'CZE': 'Repubblica Ceca', 'POL': 'Polonia', 'SVK': 'Slovacchia', 'SLO': 'Slovenia',
-            'ESP': 'Spagna', 'DEN': 'Danimarca', 'EST': 'Estonia', 'LAT': 'Lettonia',
-            'UKR': 'Ucraina', 'ROC': 'ROC', 'BLR': 'Bielorussia'
+            'Afghanistan': 'Afghanistan', 'Albania': 'Albania', 'Algeria': 'Algeria',
+            'Andorra': 'Andorra', 'Argentina': 'Argentina', 'Armenia': 'Armenia',
+            'Australia': 'Australia', 'Austria': 'Austria', 'Azerbaijan': 'Azerbaigian',
+            'Belarus': 'Bielorussia', 'Belgium': 'Belgio', 'Bosnia and Herzegovina': 'Bosnia-Erzegovina',
+            'Brazil': 'Brasile', 'Bulgaria': 'Bulgaria', 'Canada': 'Canada',
+            'Chile': 'Cile', 'China': 'Cina', "People's Republic of China": 'Cina',
+            'Colombia': 'Colombia', 'Croatia': 'Croazia', 'Cuba': 'Cuba',
+            'Czech Republic': 'Repubblica Ceca', 'Czechia': 'Repubblica Ceca',
+            'Denmark': 'Danimarca', 'Estonia': 'Estonia', 'Finland': 'Finlandia',
+            'France': 'Francia', 'Georgia': 'Georgia', 'Germany': 'Germania',
+            'Great Britain': 'Gran Bretagna', 'Greece': 'Grecia', 'Hungary': 'Ungheria',
+            'Iceland': 'Islanda', 'India': 'India', 'Iran': 'Iran', 'Ireland': 'Irlanda',
+            'Israel': 'Israele', 'Italy': 'Italia', 'Japan': 'Giappone',
+            'Kazakhstan': 'Kazakistan', 'Republic of Korea': 'Corea del Sud', 'Korea': 'Corea del Sud',
+            'Latvia': 'Lettonia', 'Liechtenstein': 'Liechtenstein', 'Lithuania': 'Lituania',
+            'Mexico': 'Messico', 'Mongolia': 'Mongolia', 'Montenegro': 'Montenegro',
+            'Netherlands': 'Paesi Bassi', 'New Zealand': 'Nuova Zelanda', 'Norway': 'Norvegia',
+            'Poland': 'Polonia', 'Portugal': 'Portogallo', 'Romania': 'Romania',
+            'Russian Federation': 'Russia', 'Russia': 'Russia', 'ROC': 'ROC',
+            'Serbia': 'Serbia', 'Slovakia': 'Slovacchia', 'Slovenia': 'Slovenia',
+            'Spain': 'Spagna', 'Sweden': 'Svezia', 'Switzerland': 'Svizzera',
+            'Turkey': 'Turchia', 'Ukraine': 'Ucraina',
+            'United States': 'Stati Uniti', 'USA': 'Stati Uniti', 'United States of America': 'Stati Uniti'
         };
 
-        const IOC_TO_ISO = {
-            'USA': 'us', 'GER': 'de', 'CAN': 'ca', 'NOR': 'no', 'AUT': 'at', 'SUI': 'ch',
-            'NED': 'nl', 'SWE': 'se', 'FRA': 'fr', 'ITA': 'it', 'JPN': 'jp', 'KOR': 'kr',
-            'CHN': 'cn', 'RUS': 'ru', 'GBR': 'gb', 'FIN': 'fi', 'CZE': 'cz', 'POL': 'pl',
-            'SVK': 'sk', 'SLO': 'si', 'ESP': 'es', 'DEN': 'dk', 'EST': 'ee', 'LAT': 'lv',
-            'UKR': 'ua', 'ROC': 'ru', 'BLR': 'by'
-        };
-
-        const API_ENDPOINTS = {
-            // Tentativi multipli di API pubbliche
-            olympics_official: [
-                'https://olympics.com/OG2026/data/CIS_MedalNOC~lang=ENG~comp=OG2026.json',
-                'https://olympics.com/OG2026/data/CIS_MedalNOC~lang=ITA~comp=OG2026.json',
-                'https://www.olympics.com/en/milano-cortina-2026/medals.json'
-            ],
-            olympics_schedule: [
-                'https://olympics.com/OG2026/data/CIS_Schedule~lang=ENG~comp=OG2026.json',
-                'https://www.olympics.com/en/milano-cortina-2026/schedule.json'
-            ],
-            cors_proxies: [
-                'https://api.allorigins.win/raw?url=',
-                'https://corsproxy.io/?',
-                'https://api.codetabs.com/v1/proxy?quest='
-            ]
+        const COUNTRY_TO_ISO = {
+            'Afghanistan': 'af', 'Albania': 'al', 'Algeria': 'dz', 'Andorra': 'ad',
+            'Argentina': 'ar', 'Armenia': 'am', 'Australia': 'au', 'Austria': 'at',
+            'Azerbaijan': 'az', 'Belarus': 'by', 'Belgium': 'be', 'Bosnia and Herzegovina': 'ba',
+            'Brazil': 'br', 'Bulgaria': 'bg', 'Canada': 'ca', 'Chile': 'cl',
+            'China': 'cn', "People's Republic of China": 'cn', 'Colombia': 'co',
+            'Croatia': 'hr', 'Cuba': 'cu', 'Czech Republic': 'cz', 'Czechia': 'cz',
+            'Denmark': 'dk', 'Estonia': 'ee', 'Finland': 'fi', 'France': 'fr',
+            'Georgia': 'ge', 'Germany': 'de', 'Great Britain': 'gb', 'Greece': 'gr',
+            'Hungary': 'hu', 'Iceland': 'is', 'India': 'in', 'Iran': 'ir',
+            'Ireland': 'ie', 'Israel': 'il', 'Italy': 'it', 'Japan': 'jp',
+            'Kazakhstan': 'kz', 'Republic of Korea': 'kr', 'Korea': 'kr',
+            'Latvia': 'lv', 'Liechtenstein': 'li', 'Lithuania': 'lt', 'Mexico': 'mx',
+            'Mongolia': 'mn', 'Montenegro': 'me', 'Netherlands': 'nl',
+            'New Zealand': 'nz', 'Norway': 'no', 'Poland': 'pl', 'Portugal': 'pt',
+            'Romania': 'ro', 'Russian Federation': 'ru', 'Russia': 'ru', 'ROC': 'ru',
+            'Serbia': 'rs', 'Slovakia': 'sk', 'Slovenia': 'si', 'Spain': 'es',
+            'Sweden': 'se', 'Switzerland': 'ch', 'Turkey': 'tr', 'Ukraine': 'ua',
+            'United States': 'us', 'USA': 'us', 'United States of America': 'us'
         };
 
         const CONFIG = {
-            UPDATE_INTERVAL: 180000, // 3 minuti
-            SLIDE_INTERVAL: 15000,   // 15 secondi
-            DEBUG: true
+            CORS_PROXIES: [
+                'https://api.allorigins.win/raw?url=',
+                'https://api.codetabs.com/v1/proxy?quest=',
+                'https://corsproxy.io/?'
+            ],
+            MEDALS_PAGE: 'https://www.olympics.com/en/milano-cortina-2026/medals',
+            SCHEDULE_PAGE: 'https://www.olympics.com/en/milano-cortina-2026/schedule',
+            UPDATE_INTERVAL: 180000,
+            SLIDE_INTERVAL: 15000
         };
 
         let currentSlide = 0;
         const slides = document.querySelectorAll('.slide');
 
-        function log(message, isError = false) {
-            const timestamp = new Date().toLocaleTimeString('it-IT');
-            console.log(`[${timestamp}] ${message}`);
-            
-            if (CONFIG.DEBUG) {
-                const debugLog = document.getElementById('debugLog');
-                debugLog.style.display = 'block';
-                debugLog.innerHTML += `<div style="color: ${isError ? '#f00' : '#0f0'}">[${timestamp}] ${message}</div>`;
-                debugLog.scrollTop = debugLog.scrollHeight;
-            }
+        function updateStatus(message, isError = false) {
+            const statusBar = document.getElementById('statusBar');
+            statusBar.textContent = message;
+            statusBar.className = isError ? 'status-bar error' : 'status-bar';
+            console.log(`[${new Date().toLocaleTimeString()}] ${message}`);
         }
 
         function nextSlide() {
@@ -444,169 +452,175 @@
 
         setInterval(nextSlide, CONFIG.SLIDE_INTERVAL);
 
-        function getFlagUrl(iocCode) {
-            const iso = IOC_TO_ISO[iocCode] || iocCode.toLowerCase();
+        function getCountryName(englishName) {
+            return COUNTRY_NAMES_IT[englishName] || englishName;
+        }
+
+        function getFlagUrl(englishName) {
+            const iso = COUNTRY_TO_ISO[englishName] || 'xx';
             return `https://flagcdn.com/w80/${iso}.png`;
         }
 
-        function getCountryName(iocCode) {
-            return COUNTRY_NAMES_IT[iocCode] || iocCode;
-        }
+        // Web scraping con CORS proxy
+        async function fetchWithProxy(url) {
+            for (const proxy of CONFIG.CORS_PROXIES) {
+                try {
+                    updateStatus(`Tentativo: ${proxy.substring(0, 30)}...`);
+                    const response = await fetch(proxy + encodeURIComponent(url), {
+                        headers: { 'Accept': 'text/html' }
+                    });
 
-        // Fetch con retry multipli
-        async function fetchWithRetry(urls, useCorsProxy = false) {
-            const proxies = useCorsProxy ? API_ENDPOINTS.cors_proxies : [''];
-            
-            for (const proxy of proxies) {
-                for (const url of urls) {
-                    try {
-                        const fetchUrl = proxy ? proxy + encodeURIComponent(url) : url;
-                        log(`Tentativo: ${fetchUrl.substring(0, 80)}...`);
-                        
-                        const response = await fetch(fetchUrl, {
-                            headers: {
-                                'Accept': 'application/json',
-                            },
-                            cache: 'no-cache'
-                        });
-
-                        if (response.ok) {
-                            const data = await response.json();
-                            log(`✅ Successo da: ${url.substring(0, 50)}...`);
-                            return data;
-                        }
-                        
-                        log(`❌ Errore ${response.status} da: ${url.substring(0, 50)}...`, true);
-                    } catch (error) {
-                        log(`❌ Errore fetch: ${error.message}`, true);
+                    if (response.ok) {
+                        const html = await response.text();
+                        updateStatus(`✅ Dati ricevuti da ${proxy.substring(8, 25)}`);
+                        return html;
                     }
+                } catch (error) {
+                    console.log(`Proxy fallito: ${error.message}`);
                 }
             }
-            
             return null;
         }
 
-        // Carica medagliere
-        async function loadMedals() {
+        // Scraping medagliere
+        async function scrapeMedals() {
             try {
-                log('🔄 Caricamento medagliere...');
+                updateStatus('🔄 Scraping medagliere...');
                 
-                // Prova prima senza proxy
-                let data = await fetchWithRetry(API_ENDPOINTS.olympics_official, false);
+                const html = await fetchWithProxy(CONFIG.MEDALS_PAGE);
+                if (!html) throw new Error('Impossibile scaricare la pagina');
+
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
                 
-                // Se fallisce, prova con CORS proxy
-                if (!data) {
-                    log('⚠️ Tentativo con CORS proxy...');
-                    data = await fetchWithRetry(API_ENDPOINTS.olympics_official, true);
+                updateStatus('📊 Parsing HTML...');
+                
+                // Cerca tabelle medagliere
+                const medals = [];
+                
+                // Strategia 1: Cerca tabelle con classe specifica
+                let rows = doc.querySelectorAll('table tr, [class*="medal"] tr, [class*="ranking"] tr');
+                
+                // Strategia 2: Se non trova, cerca qualsiasi tabella
+                if (rows.length === 0) {
+                    rows = doc.querySelectorAll('tr');
                 }
 
-                if (!data) {
-                    throw new Error('Nessuna API disponibile');
-                }
+                rows.forEach((row, index) => {
+                    const cells = row.querySelectorAll('td, th');
+                    if (cells.length >= 5) {
+                        const text = Array.from(cells).map(c => c.textContent.trim());
+                        
+                        // Cerca pattern: Rank, Country, Gold, Silver, Bronze, Total
+                        const hasNumbers = text.some(t => /^\d+$/.test(t));
+                        const hasCountry = text.some(t => t.length > 2 && /^[A-Za-z\s]+$/.test(t));
+                        
+                        if (hasNumbers && hasCountry) {
+                            let rank = 0, country = '', gold = 0, silver = 0, bronze = 0, total = 0;
+                            
+                            text.forEach((t, i) => {
+                                if (/^\d+$/.test(t)) {
+                                    const num = parseInt(t);
+                                    if (num <= 100 && rank === 0) rank = num;
+                                    else if (gold === 0) gold = num;
+                                    else if (silver === 0) silver = num;
+                                    else if (bronze === 0) bronze = num;
+                                    else if (total === 0) total = num;
+                                } else if (t.length > 2 && /^[A-Za-z\s]+$/.test(t) && !country) {
+                                    country = t;
+                                }
+                            });
 
-                let medalsArray = [];
-                
-                // Parsing dati flessibile
-                if (data.medals) {
-                    medalsArray = data.medals;
-                } else if (data.data && Array.isArray(data.data)) {
-                    medalsArray = data.data;
-                } else if (Array.isArray(data)) {
-                    medalsArray = data;
-                } else if (data.nocs || data.countries) {
-                    medalsArray = data.nocs || data.countries;
-                }
+                            if (country && (gold > 0 || silver > 0 || bronze > 0)) {
+                                medals.push({
+                                    rank: rank || medals.length + 1,
+                                    country: country,
+                                    gold: gold,
+                                    silver: silver,
+                                    bronze: bronze,
+                                    total: total || (gold + silver + bronze)
+                                });
+                            }
+                        }
+                    }
+                });
 
-                // Filtra e mappa
-                medalsArray = medalsArray
-                    .filter(item => {
-                        const total = parseInt(item.total || item.total_medals || item.totalMedals || 0);
-                        return total > 0;
-                    })
-                    .map((item, index) => ({
-                        rank: index + 1,
-                        ioc: item.noc || item.code || item.id || item.ioc,
-                        name: getCountryName(item.noc || item.code || item.id || item.ioc),
-                        gold: parseInt(item.gold || item.gold_medals || item.goldMedals || 0),
-                        silver: parseInt(item.silver || item.silver_medals || item.silverMedals || 0),
-                        bronze: parseInt(item.bronze || item.bronze_medals || item.bronzeMedals || 0),
-                        total: parseInt(item.total || item.total_medals || item.totalMedals || 0)
-                    }))
-                    .sort((a, b) => {
-                        if (b.gold !== a.gold) return b.gold - a.gold;
-                        if (b.silver !== a.silver) return b.silver - a.silver;
-                        return b.bronze - a.bronze;
-                    });
+                // Rimuovi duplicati
+                const uniqueMedals = medals.filter((medal, index, self) =>
+                    index === self.findIndex(m => m.country === medal.country)
+                );
 
-                if (medalsArray.length === 0) {
-                    document.getElementById('medalsContent').innerHTML = `
-                        <div class="info-message">
-                            🎿 <strong>Medagliere in Tempo Reale</strong><br><br>
-                            Le Olimpiadi Milano-Cortina 2026 sono iniziate il 6 febbraio!<br>
-                            Le medaglie verranno visualizzate qui non appena assegnate.<br><br>
-                            <small>Aggiornamento automatico ogni 3 minuti</small>
-                        </div>
-                    `;
-                    updateStats(0, 0, 0);
+                // Ordina
+                uniqueMedals.sort((a, b) => {
+                    if (b.gold !== a.gold) return b.gold - a.gold;
+                    if (b.silver !== a.silver) return b.silver - a.silver;
+                    return b.bronze - a.bronze;
+                });
+
+                if (uniqueMedals.length === 0) {
+                    updateStatus('⚠️ Nessuna medaglia trovata nel parsing');
+                    showNoMedalsMessage();
                     return;
                 }
 
-                displayMedals(medalsArray);
+                updateStatus(`✅ ${uniqueMedals.length} paesi trovati`);
+                displayMedals(uniqueMedals);
                 
-                const totalMedals = medalsArray.reduce((sum, c) => sum + c.total, 0);
-                const totalGold = medalsArray.reduce((sum, c) => sum + c.gold, 0);
-                updateStats(medalsArray.length, totalMedals, totalGold);
-                
-                log(`✅ Medagliere: ${medalsArray.length} nazioni, ${totalMedals} medaglie`);
+                const totalMedals = uniqueMedals.reduce((sum, c) => sum + c.total, 0);
+                const totalGold = uniqueMedals.reduce((sum, c) => sum + c.gold, 0);
+                updateStats(uniqueMedals.length, totalMedals, totalGold);
 
             } catch (error) {
-                log(`❌ Errore medagliere: ${error.message}`, true);
-                document.getElementById('medalsContent').innerHTML = `
-                    <div class="error-message">
-                        ⚠️ <strong>API Non Disponibili</strong><br><br>
-                        Le API pubbliche gratuite per le Olimpiadi 2026 non sono accessibili al momento.<br><br>
-                        <strong>Motivi possibili:</strong><br>
-                        • Le API ufficiali olympics.com richiedono autenticazione<br>
-                        • Limitazioni CORS del browser<br>
-                        • API commerciali richiedono abbonamento<br><br>
-                        <small>Tentativo di riconnessione automatica in corso...</small>
-                    </div>
-                `;
+                updateStatus(`❌ Errore: ${error.message}`, true);
+                showNoMedalsMessage();
             }
         }
 
-        function displayMedals(data) {
+        function showNoMedalsMessage() {
+            document.getElementById('medalsContent').innerHTML = `
+                <div class="info-message">
+                    🎿 <strong>Medagliere in Tempo Reale</strong><br><br>
+                    Le Olimpiadi Milano-Cortina 2026 sono appena iniziate!<br>
+                    Le prime medaglie verranno assegnate nelle prossime ore.<br><br>
+                    <small>Il sistema sta monitorando olympics.com per gli aggiornamenti</small>
+                </div>
+            `;
+            updateStats(0, 0, 0);
+        }
+
+        function displayMedals(medals) {
             const content = document.getElementById('medalsContent');
-            const topCountries = data.slice(0, 12);
+            const topMedals = medals.slice(0, 12);
             
             let html = '';
-            topCountries.forEach((country, index) => {
+            topMedals.forEach((medal, index) => {
                 const rankClass = index === 0 ? 'top-1' : index === 1 ? 'top-2' : index === 2 ? 'top-3' : '';
-                const italyClass = country.ioc === 'ITA' ? 'italy' : '';
+                const italyClass = medal.country.toLowerCase().includes('ital') ? 'italy' : '';
+                const countryIT = getCountryName(medal.country);
                 
                 html += `
                     <div class="medal-card ${italyClass}">
-                        <div class="rank-badge ${rankClass}">${country.rank}</div>
+                        <div class="rank-badge ${rankClass}">${medal.rank}</div>
                         <div class="country-info">
-                            <img src="${getFlagUrl(country.ioc)}" alt="${country.name}" class="flag">
-                            <div class="country-name">${country.name}</div>
+                            <img src="${getFlagUrl(medal.country)}" alt="${countryIT}" class="flag">
+                            <div class="country-name">${countryIT}</div>
                         </div>
                         <div class="medals">
                             <div class="medal-count">
                                 <span style="font-size: 1.5em">🥇</span>
-                                <span>${country.gold}</span>
+                                <span>${medal.gold}</span>
                             </div>
                             <div class="medal-count">
                                 <span style="font-size: 1.5em">🥈</span>
-                                <span>${country.silver}</span>
+                                <span>${medal.silver}</span>
                             </div>
                             <div class="medal-count">
                                 <span style="font-size: 1.5em">🥉</span>
-                                <span>${country.bronze}</span>
+                                <span>${medal.bronze}</span>
                             </div>
                             <div class="medal-count">
                                 <span style="font-weight: bold; color: #0066cc;">TOT</span>
-                                <span>${country.total}</span>
+                                <span>${medal.total}</span>
                             </div>
                         </div>
                     </div>
@@ -620,117 +634,120 @@
             document.getElementById('stats').innerHTML = `
                 <div class="stat-item">
                     <div class="stat-value">${countries}</div>
-                    <div class="stat-label">Nazioni</div>
+                    <div class="stat-label">Nazioni con Medaglie</div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-value">${medals}</div>
-                    <div class="stat-label">Medaglie</div>
+                    <div class="stat-label">Medaglie Assegnate</div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-value">${gold}</div>
-                    <div class="stat-label">Ori</div>
+                    <div class="stat-label">Ori Assegnati</div>
                 </div>
             `;
         }
 
-        // Carica eventi
-        async function loadEvents() {
+        // Scraping eventi
+        async function scrapeEvents() {
             try {
-                log('🔄 Caricamento eventi...');
+                updateStatus('🔄 Scraping eventi...');
                 
-                let data = await fetchWithRetry(API_ENDPOINTS.olympics_schedule, false);
+                const html = await fetchWithProxy(CONFIG.SCHEDULE_PAGE);
+                if (!html) throw new Error('Impossibile scaricare schedule');
+
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
                 
-                if (!data) {
-                    data = await fetchWithRetry(API_ENDPOINTS.olympics_schedule, true);
-                }
-
-                if (!data) {
-                    throw new Error('API eventi non disponibile');
-                }
-
-                // Parsing eventi
-                let eventsArray = [];
+                const events = [];
                 
-                if (data.events) {
-                    eventsArray = data.events;
-                } else if (data.data && Array.isArray(data.data)) {
-                    eventsArray = data.data;
-                } else if (Array.isArray(data)) {
-                    eventsArray = data;
-                }
-
-                // Filtra eventi di oggi
-                const today = new Date().toISOString().split('T')[0];
-                eventsArray = eventsArray.filter(event => {
-                    const eventDate = (event.date || event.start_date || event.startDate || '').split('T')[0];
-                    return eventDate === today;
+                // Cerca eventi nel DOM
+                const eventElements = doc.querySelectorAll('[class*="event"], [class*="schedule"], [class*="competition"]');
+                
+                eventElements.forEach(el => {
+                    const text = el.textContent;
+                    if (text.includes(':') && (text.length > 10 && text.length < 500)) {
+                        events.push({
+                            discipline: extractDiscipline(text),
+                            name: text.substring(0, 100),
+                            time: extractTime(text),
+                            venue: extractVenue(text),
+                            hasItaly: text.toLowerCase().includes('ital') || text.toLowerCase().includes('ita ')
+                        });
+                    }
                 });
 
-                displayEvents(eventsArray);
-                log(`✅ Eventi caricati: ${eventsArray.length}`);
+                if (events.length === 0) {
+                    showNoEventsMessage();
+                    return;
+                }
+
+                const italyEvents = events.filter(e => e.hasItaly);
+                displayEventCards('italyEvents', italyEvents.slice(0, 8));
+                displayEventCards('allEvents', events.slice(0, 8));
+                
+                updateStatus(`✅ ${events.length} eventi trovati`);
 
             } catch (error) {
-                log(`❌ Errore eventi: ${error.message}`, true);
-                
-                const errorMsg = `
-                    <div class="error-message">
-                        ⚠️ <strong>Eventi Non Disponibili</strong><br><br>
-                        Le API pubbliche per gli eventi olimpici non sono accessibili.<br><br>
-                        <small>Per accedere agli eventi live visita:<br>
-                        <a href="https://olympics.com/en/milano-cortina-2026/schedule" target="_blank" style="color: #3b82f6">
-                        olympics.com/milano-cortina-2026/schedule
-                        </a></small>
-                    </div>
-                `;
-                
-                document.getElementById('italyEvents').innerHTML = errorMsg;
-                document.getElementById('allEvents').innerHTML = errorMsg;
+                updateStatus(`⚠️ Eventi: ${error.message}`);
+                showNoEventsMessage();
             }
         }
 
-        function displayEvents(events) {
-            const italyEvents = events.filter(e => {
-                const competitors = e.competitors || e.participants || [];
-                return competitors.some(c => 
-                    (c.country || c.noc || c.country_id || '').toUpperCase() === 'ITA'
-                );
-            });
-
-            displayEventCards('italyEvents', italyEvents, true);
-            displayEventCards('allEvents', events, false);
+        function extractDiscipline(text) {
+            const disciplines = ['Sci Alpino', 'Biathlon', 'Snowboard', 'Hockey', 'Curling', 
+                               'Pattinaggio', 'Sci di Fondo', 'Short Track', 'Alpine', 'Cross-Country'];
+            for (const disc of disciplines) {
+                if (text.toLowerCase().includes(disc.toLowerCase())) return disc;
+            }
+            return 'Evento Olimpico';
         }
 
-        function displayEventCards(containerId, events, italyOnly) {
+        function extractTime(text) {
+            const timeMatch = text.match(/\d{1,2}:\d{2}/);
+            return timeMatch ? timeMatch[0] : '--:--';
+        }
+
+        function extractVenue(text) {
+            const venues = ['Milano', 'Cortina', 'Livigno', 'Bormio', 'Anterselva', 'Val di Fiemme'];
+            for (const venue of venues) {
+                if (text.includes(venue)) return venue;
+            }
+            return 'Italia';
+        }
+
+        function showNoEventsMessage() {
+            const msg = `
+                <div class="info-message">
+                    📅 Nessun evento disponibile dal web scraping<br>
+                    <small>Visita <a href="https://olympics.com/milano-cortina-2026/schedule" target="_blank" style="color:#3b82f6">olympics.com</a></small>
+                </div>
+            `;
+            document.getElementById('italyEvents').innerHTML = msg;
+            document.getElementById('allEvents').innerHTML = msg;
+        }
+
+        function displayEventCards(containerId, events) {
             const content = document.getElementById(containerId);
             
             if (!events || events.length === 0) {
-                content.innerHTML = `
-                    <div class="info-message">
-                        ${italyOnly ? '🇮🇹' : '📅'} Nessun evento disponibile
-                    </div>
-                `;
+                content.innerHTML = '<div class="info-message">Nessun evento</div>';
                 return;
             }
 
             let html = '';
-            events.slice(0, 8).forEach(event => {
-                const time = new Date(event.start_date || event.date).toLocaleTimeString('it-IT', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-
-                const italyClass = italyOnly ? 'italy-event' : '';
+            events.forEach(event => {
+                const italyClass = event.hasItaly ? 'italy-event' : '';
                 
                 html += `
                     <div class="event-card ${italyClass}">
-                        ${italyOnly ? '<div class="italy-badge">🇮🇹 ITALIA</div>' : ''}
+                        ${event.hasItaly ? '<div class="italy-badge">🇮🇹 ITALIA</div>' : ''}
                         <div class="event-header">
-                            <div class="event-time">⏰ ${time}</div>
-                            <div class="event-status">${event.status || 'Programmato'}</div>
+                            <div class="event-time">⏰ ${event.time}</div>
+                            <div class="event-status">Programmato</div>
                         </div>
-                        <div class="event-discipline">${event.discipline || event.sport}</div>
-                        <div class="event-name">${event.name || event.event_name}</div>
-                        <div class="event-venue">📍 ${event.venue || event.location}</div>
+                        <div class="event-discipline">${event.discipline}</div>
+                        <div class="event-name">${event.name}</div>
+                        <div class="event-venue">📍 ${event.venue}</div>
                     </div>
                 `;
             });
@@ -739,16 +756,16 @@
         }
 
         async function init() {
-            log('🚀 Inizializzazione Dashboard Milano-Cortina 2026');
+            updateStatus('🚀 Avvio web scraping...');
             
-            await loadMedals();
-            await loadEvents();
+            await scrapeMedals();
+            await scrapeEvents();
             
             // Auto refresh
             setInterval(async () => {
-                log('🔄 Refresh automatico...');
-                await loadMedals();
-                await loadEvents();
+                updateStatus('🔄 Refresh automatico...');
+                await scrapeMedals();
+                await scrapeEvents();
             }, CONFIG.UPDATE_INTERVAL);
         }
 
