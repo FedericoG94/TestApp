@@ -78,7 +78,6 @@
             padding-bottom: 15px;
         }
 
-        /* Medagliere */
         .medals-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
@@ -111,9 +110,9 @@
             text-align: center;
         }
 
-        .rank-badge.top-1 { color: #FFD700; }
-        .rank-badge.top-2 { color: #C0C0C0; }
-        .rank-badge.top-3 { color: #CD7F32; }
+        .rank-badge.top-1 { color: #FFD700; text-shadow: 0 0 10px rgba(255,215,0,0.5); }
+        .rank-badge.top-2 { color: #C0C0C0; text-shadow: 0 0 10px rgba(192,192,192,0.5); }
+        .rank-badge.top-3 { color: #CD7F32; text-shadow: 0 0 10px rgba(205,127,50,0.5); }
 
         .country-info {
             display: flex;
@@ -128,6 +127,7 @@
             object-fit: cover;
             border-radius: 5px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            border: 1px solid rgba(0,0,0,0.1);
         }
 
         .country-name {
@@ -154,7 +154,6 @@
             font-size: 1.5em;
         }
 
-        /* Eventi */
         .events-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -169,18 +168,6 @@
             padding: 25px;
             box-shadow: 0 8px 20px rgba(0,0,0,0.3);
             color: #333;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .event-card.live {
-            border: 3px solid #ff0000;
-            animation: glow 2s infinite;
-        }
-
-        @keyframes glow {
-            0%, 100% { box-shadow: 0 0 20px rgba(255,0,0,0.5); }
-            50% { box-shadow: 0 0 30px rgba(255,0,0,0.8); }
         }
 
         .event-header {
@@ -205,11 +192,6 @@
             font-weight: bold;
         }
 
-        .event-status.live {
-            background: #ff0000;
-            animation: pulse 1.5s infinite;
-        }
-
         .event-discipline {
             font-size: 1.8em;
             font-weight: bold;
@@ -226,32 +208,6 @@
         .event-venue {
             font-size: 1.1em;
             color: #888;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .competitors {
-            display: flex;
-            gap: 15px;
-            margin-top: 15px;
-            flex-wrap: wrap;
-        }
-
-        .competitor {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: rgba(0,102,204,0.1);
-            padding: 8px 12px;
-            border-radius: 8px;
-        }
-
-        .competitor-flag {
-            width: 30px;
-            height: 22px;
-            object-fit: cover;
-            border-radius: 3px;
         }
 
         .loading {
@@ -286,16 +242,6 @@
             font-size: 1.1em;
         }
 
-        .error-message {
-            background: rgba(255,0,0,0.2);
-            border: 2px solid #ff0000;
-            padding: 20px;
-            border-radius: 10px;
-            margin: 20px;
-            text-align: center;
-            font-size: 1.2em;
-        }
-
         .stats-bar {
             display: flex;
             justify-content: space-around;
@@ -319,6 +265,15 @@
             font-size: 1em;
             color: rgba(255,255,255,0.8);
         }
+
+        .error-message {
+            background: rgba(255,100,100,0.9);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px;
+            text-align: center;
+            font-size: 1.2em;
+        }
     </style>
 </head>
 <body>
@@ -328,7 +283,6 @@
     </div>
 
     <div class="container">
-        <!-- Slide 1: Medagliere -->
         <div class="slide active" id="slide1">
             <h1 class="slide-title">🏅 MEDAGLIERE</h1>
             <div class="stats-bar" id="stats"></div>
@@ -341,7 +295,6 @@
             <div class="slide-indicator">1 / 3</div>
         </div>
 
-        <!-- Slide 2: Eventi Live -->
         <div class="slide" id="slide2">
             <h1 class="slide-title">🔴 EVENTI LIVE</h1>
             <div class="events-grid" id="liveEvents">
@@ -353,7 +306,6 @@
             <div class="slide-indicator">2 / 3</div>
         </div>
 
-        <!-- Slide 3: Prossimi Eventi -->
         <div class="slide" id="slide3">
             <h1 class="slide-title">📅 PROSSIMI EVENTI</h1>
             <div class="events-grid" id="upcomingEvents">
@@ -367,57 +319,183 @@
     </div>
 
     <script>
-        // Configurazione API
-        const API = {
-            BASE: 'https://apis.codante.io/olympic-games',
-            MEDALS: '/countries',
-            EVENTS: '/events',
-            BACKUP_MEDALS: 'https://api.olympics.kevle.xyz/medals',
+        // Mappatura codici IOC a ISO (per bandiere)
+        const IOC_TO_ISO = {
+            'AFG': 'af', 'ALB': 'al', 'ALG': 'dz', 'AND': 'ad', 'ANG': 'ao', 'ARG': 'ar',
+            'ARM': 'am', 'AUS': 'au', 'AUT': 'at', 'AZE': 'az', 'BAH': 'bs', 'BAN': 'bd',
+            'BAR': 'bb', 'BLR': 'by', 'BEL': 'be', 'BIZ': 'bz', 'BEN': 'bj', 'BER': 'bm',
+            'BHU': 'bt', 'BOL': 'bo', 'BIH': 'ba', 'BOT': 'bw', 'BRA': 'br', 'BRN': 'bn',
+            'BUL': 'bg', 'BUR': 'bf', 'BDI': 'bi', 'CAM': 'kh', 'CMR': 'cm', 'CAN': 'ca',
+            'CPV': 'cv', 'CAY': 'ky', 'CAF': 'cf', 'CHA': 'td', 'CHI': 'cl', 'CHN': 'cn',
+            'COL': 'co', 'COM': 'km', 'CGO': 'cg', 'COD': 'cd', 'CRC': 'cr', 'CIV': 'ci',
+            'CRO': 'hr', 'CUB': 'cu', 'CYP': 'cy', 'CZE': 'cz', 'DEN': 'dk', 'DJI': 'dj',
+            'DMA': 'dm', 'DOM': 'do', 'ECU': 'ec', 'EGY': 'eg', 'ESA': 'sv', 'GEQ': 'gq',
+            'ERI': 'er', 'EST': 'ee', 'ETH': 'et', 'FIJ': 'fj', 'FIN': 'fi', 'FRA': 'fr',
+            'GAB': 'ga', 'GAM': 'gm', 'GEO': 'ge', 'GER': 'de', 'GHA': 'gh', 'GBR': 'gb',
+            'GRE': 'gr', 'GRN': 'gd', 'GUA': 'gt', 'GUI': 'gn', 'GBS': 'gw', 'GUY': 'gy',
+            'HAI': 'ht', 'HON': 'hn', 'HKG': 'hk', 'HUN': 'hu', 'ISL': 'is', 'IND': 'in',
+            'INA': 'id', 'IRI': 'ir', 'IRQ': 'iq', 'IRL': 'ie', 'ISR': 'il', 'ITA': 'it',
+            'JAM': 'jm', 'JPN': 'jp', 'JOR': 'jo', 'KAZ': 'kz', 'KEN': 'ke', 'KIR': 'ki',
+            'PRK': 'kp', 'KOR': 'kr', 'KOS': 'xk', 'KUW': 'kw', 'KGZ': 'kg', 'LAO': 'la',
+            'LAT': 'lv', 'LIB': 'lb', 'LES': 'ls', 'LBR': 'lr', 'LBA': 'ly', 'LIE': 'li',
+            'LTU': 'lt', 'LUX': 'lu', 'MAD': 'mg', 'MAW': 'mw', 'MAS': 'my', 'MDV': 'mv',
+            'MLI': 'ml', 'MLT': 'mt', 'MHL': 'mh', 'MTN': 'mr', 'MRI': 'mu', 'MEX': 'mx',
+            'FSM': 'fm', 'MDA': 'md', 'MON': 'mc', 'MGL': 'mn', 'MNE': 'me', 'MAR': 'ma',
+            'MOZ': 'mz', 'MYA': 'mm', 'NAM': 'na', 'NRU': 'nr', 'NEP': 'np', 'NED': 'nl',
+            'NZL': 'nz', 'NCA': 'ni', 'NIG': 'ne', 'NGR': 'ng', 'MKD': 'mk', 'NOR': 'no',
+            'OMA': 'om', 'PAK': 'pk', 'PLW': 'pw', 'PLE': 'ps', 'PAN': 'pa', 'PNG': 'pg',
+            'PAR': 'py', 'PER': 'pe', 'PHI': 'ph', 'POL': 'pl', 'POR': 'pt', 'PUR': 'pr',
+            'QAT': 'qa', 'ROU': 'ro', 'RUS': 'ru', 'RWA': 'rw', 'SKN': 'kn', 'LCA': 'lc',
+            'VIN': 'vc', 'SAM': 'ws', 'SMR': 'sm', 'STP': 'st', 'KSA': 'sa', 'SEN': 'sn',
+            'SRB': 'rs', 'SEY': 'sc', 'SLE': 'sl', 'SGP': 'sg', 'SVK': 'sk', 'SLO': 'si',
+            'SOL': 'sb', 'SOM': 'so', 'RSA': 'za', 'SSD': 'ss', 'ESP': 'es', 'SRI': 'lk',
+            'SUD': 'sd', 'SUR': 'sr', 'SWE': 'se', 'SUI': 'ch', 'SYR': 'sy', 'TPE': 'tw',
+            'TJK': 'tj', 'TAN': 'tz', 'THA': 'th', 'TLS': 'tl', 'TOG': 'tg', 'TGA': 'to',
+            'TTO': 'tt', 'TUN': 'tn', 'TUR': 'tr', 'TKM': 'tm', 'TUV': 'tv', 'UGA': 'ug',
+            'UKR': 'ua', 'UAE': 'ae', 'USA': 'us', 'URU': 'uy', 'UZB': 'uz', 'VAN': 'vu',
+            'VEN': 've', 'VIE': 'vn', 'YEM': 'ye', 'ZAM': 'zm', 'ZIM': 'zw', 'ROC': 'ru'
+        };
+
+        // Nomi paesi in italiano
+        const COUNTRY_NAMES_IT = {
+            'AFG': 'Afghanistan', 'ALB': 'Albania', 'ALG': 'Algeria', 'AND': 'Andorra',
+            'ANG': 'Angola', 'ARG': 'Argentina', 'ARM': 'Armenia', 'AUS': 'Australia',
+            'AUT': 'Austria', 'AZE': 'Azerbaigian', 'BAH': 'Bahamas', 'BAN': 'Bangladesh',
+            'BAR': 'Barbados', 'BLR': 'Bielorussia', 'BEL': 'Belgio', 'BIH': 'Bosnia-Erzegovina',
+            'BOL': 'Bolivia', 'BOT': 'Botswana', 'BRA': 'Brasile', 'BUL': 'Bulgaria',
+            'CAN': 'Canada', 'CHI': 'Cile', 'CHN': 'Cina', 'COL': 'Colombia', 'CRC': 'Costa Rica',
+            'CRO': 'Croazia', 'CUB': 'Cuba', 'CYP': 'Cipro', 'CZE': 'Repubblica Ceca',
+            'DEN': 'Danimarca', 'ECU': 'Ecuador', 'EGY': 'Egitto', 'ESP': 'Spagna',
+            'EST': 'Estonia', 'ETH': 'Etiopia', 'FIN': 'Finlandia', 'FRA': 'Francia',
+            'GBR': 'Gran Bretagna', 'GEO': 'Georgia', 'GER': 'Germania', 'GHA': 'Ghana',
+            'GRE': 'Grecia', 'HKG': 'Hong Kong', 'HUN': 'Ungheria', 'INA': 'Indonesia',
+            'IND': 'India', 'IRI': 'Iran', 'IRL': 'Irlanda', 'ISL': 'Islanda', 'ISR': 'Israele',
+            'ITA': 'Italia', 'JAM': 'Giamaica', 'JPN': 'Giappone', 'KAZ': 'Kazakistan',
+            'KEN': 'Kenya', 'KOR': 'Corea del Sud', 'KOS': 'Kosovo', 'LAT': 'Lettonia',
+            'LIE': 'Liechtenstein', 'LTU': 'Lituania', 'LUX': 'Lussemburgo', 'MAR': 'Marocco',
+            'MEX': 'Messico', 'MDA': 'Moldavia', 'MGL': 'Mongolia', 'MKD': 'Macedonia del Nord',
+            'MNE': 'Montenegro', 'MON': 'Monaco', 'NED': 'Paesi Bassi', 'NGR': 'Nigeria',
+            'NOR': 'Norvegia', 'NZL': 'Nuova Zelanda', 'PAK': 'Pakistan', 'PAN': 'Panama',
+            'PAR': 'Paraguay', 'PER': 'Perù', 'PHI': 'Filippine', 'POL': 'Polonia',
+            'POR': 'Portogallo', 'PRK': 'Corea del Nord', 'PUR': 'Porto Rico', 'QAT': 'Qatar',
+            'ROU': 'Romania', 'RSA': 'Sudafrica', 'RUS': 'Russia', 'SEN': 'Senegal',
+            'SRB': 'Serbia', 'SGP': 'Singapore', 'SVK': 'Slovacchia', 'SLO': 'Slovenia',
+            'SUI': 'Svizzera', 'SWE': 'Svezia', 'THA': 'Thailandia', 'TPE': 'Taiwan',
+            'TTO': 'Trinidad e Tobago', 'TUN': 'Tunisia', 'TUR': 'Turchia', 'UKR': 'Ucraina',
+            'UAE': 'Emirati Arabi', 'USA': 'Stati Uniti', 'URU': 'Uruguay', 'UZB': 'Uzbekistan',
+            'VEN': 'Venezuela', 'VIE': 'Vietnam', 'ZIM': 'Zimbabwe', 'ROC': 'ROC'
+        };
+
+        // Configurazione
+        const CONFIG = {
+            CORS_PROXY: 'https://api.allorigins.win/raw?url=',
+            OLYMPICS_URL: 'https://olympics.com/OG2026/data/CIS_MedalNOC~lang=ENG~comp=OG2026.json',
+            BACKUP_URL: 'https://apis.codante.io/olympic-games/countries',
             UPDATE_INTERVAL: 300000, // 5 minuti
-            SLIDE_INTERVAL: 15000    // 15 secondi per slide
+            SLIDE_INTERVAL: 15000    // 15 secondi
         };
 
         let currentSlide = 0;
         const slides = document.querySelectorAll('.slide');
-        let medalsData = [];
-        let eventsData = [];
 
-        // Carousel automatico
+        // Carousel
         function nextSlide() {
             slides[currentSlide].classList.remove('active');
             currentSlide = (currentSlide + 1) % slides.length;
             slides[currentSlide].classList.add('active');
         }
 
-        // Avvia carousel
-        setInterval(nextSlide, API.SLIDE_INTERVAL);
+        setInterval(nextSlide, CONFIG.SLIDE_INTERVAL);
+
+        // Ottieni bandiera
+        function getFlagUrl(iocCode) {
+            const iso = IOC_TO_ISO[iocCode] || iocCode.toLowerCase();
+            return `https://flagcdn.com/w80/${iso}.png`;
+        }
+
+        // Ottieni nome paese in italiano
+        function getCountryName(iocCode, fallbackName) {
+            return COUNTRY_NAMES_IT[iocCode] || fallbackName || iocCode;
+        }
 
         // Carica medagliere
         async function loadMedals() {
             try {
-                console.log('Caricamento medagliere...');
-                let response = await fetch(API.BASE + API.MEDALS);
+                console.log('🔄 Tentativo caricamento medagliere...');
+                
+                // Prova API ufficiale con CORS proxy
+                let response = await fetch(CONFIG.CORS_PROXY + encodeURIComponent(CONFIG.OLYMPICS_URL));
                 
                 if (!response.ok) {
-                    response = await fetch(API.BACKUP_MEDALS);
+                    console.log('⚠️ API ufficiale non disponibile, provo backup...');
+                    response = await fetch(CONFIG.BACKUP_URL);
                 }
 
-                if (!response.ok) throw new Error('API non disponibile');
+                if (!response.ok) {
+                    throw new Error('Tutte le API non disponibili');
+                }
 
-                const result = await response.json();
-                medalsData = result.data || result;
+                const data = await response.json();
+                console.log('✅ Dati ricevuti:', data);
                 
-                displayMedals(medalsData);
-                updateStats(medalsData);
+                // Parsing dati
+                let medalsArray = [];
                 
-                console.log('Medagliere caricato:', medalsData.length, 'paesi');
+                if (data.medals) {
+                    // Formato API ufficiale
+                    medalsArray = data.medals.map((item, index) => ({
+                        rank: index + 1,
+                        ioc: item.noc || item.code,
+                        name: getCountryName(item.noc || item.code, item.description),
+                        gold: parseInt(item.gold) || 0,
+                        silver: parseInt(item.silver) || 0,
+                        bronze: parseInt(item.bronze) || 0,
+                        total: parseInt(item.total) || 0
+                    }));
+                } else if (data.data) {
+                    // Formato backup API
+                    medalsArray = data.data.map((item, index) => ({
+                        rank: item.rank || index + 1,
+                        ioc: item.id || item.country_id,
+                        name: getCountryName(item.id || item.country_id, item.name),
+                        gold: item.gold_medals || item.gold || 0,
+                        silver: item.silver_medals || item.silver || 0,
+                        bronze: item.bronze_medals || item.bronze || 0,
+                        total: item.total_medals || item.total || 0
+                    }));
+                } else if (Array.isArray(data)) {
+                    medalsArray = data.map((item, index) => ({
+                        rank: item.rank || index + 1,
+                        ioc: item.id || item.noc || item.code,
+                        name: getCountryName(item.id || item.noc || item.code, item.name || item.description),
+                        gold: item.gold_medals || item.gold || 0,
+                        silver: item.silver_medals || item.silver || 0,
+                        bronze: item.bronze_medals || item.bronze || 0,
+                        total: item.total_medals || item.total || 0
+                    }));
+                }
+
+                // Ordina per oro, poi argento, poi bronzo
+                medalsArray.sort((a, b) => {
+                    if (b.gold !== a.gold) return b.gold - a.gold;
+                    if (b.silver !== a.silver) return b.silver - a.silver;
+                    return b.bronze - a.bronze;
+                });
+
+                // Riassegna ranks
+                medalsArray.forEach((item, index) => item.rank = index + 1);
+
+                displayMedals(medalsArray);
+                updateStats(medalsArray);
+                
+                console.log('✅ Medagliere visualizzato:', medalsArray.length, 'paesi');
             } catch (error) {
-                console.error('Errore caricamento medagliere:', error);
+                console.error('❌ Errore:', error);
                 document.getElementById('medalsContent').innerHTML = `
                     <div class="error-message">
-                        ⚠️ Impossibile caricare i dati del medagliere.<br>
-                        Verifica la connessione internet.<br>
-                        <small>Errore: ${error.message}</small>
+                        ⚠️ Impossibile caricare i dati del medagliere<br>
+                        <small>${error.message}</small><br>
+                        <small>Le Olimpiadi Milano-Cortina 2026 sono in corso. I dati potrebbero non essere ancora disponibili tramite API pubbliche gratuite.</small>
                     </div>
                 `;
             }
@@ -425,10 +503,14 @@
 
         // Visualizza medagliere
         function displayMedals(data) {
-            if (!data || data.length === 0) return;
+            if (!data || data.length === 0) {
+                document.getElementById('medalsContent').innerHTML = 
+                    '<div class="error-message">Nessun dato disponibile</div>';
+                return;
+            }
 
             const content = document.getElementById('medalsContent');
-            const topCountries = data.slice(0, 12); // Prime 12 nazioni
+            const topCountries = data.slice(0, 12);
             
             let html = '';
             topCountries.forEach((country, index) => {
@@ -436,28 +518,30 @@
                 
                 html += `
                     <div class="medal-card">
-                        <div class="rank-badge ${rankClass}">${country.rank || index + 1}</div>
+                        <div class="rank-badge ${rankClass}">${country.rank}</div>
                         <div class="country-info">
-                            <img src="${country.flag_url}" alt="${country.name}" class="flag" 
-                                 onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2260%22 height=%2245%22><rect width=%22100%%22 height=%22100%%22 fill=%22%23ccc%22/></svg>'">
+                            <img src="${getFlagUrl(country.ioc)}" 
+                                 alt="${country.name}" 
+                                 class="flag"
+                                 onerror="this.style.opacity='0.3'">
                             <div class="country-name">${country.name}</div>
                         </div>
                         <div class="medals">
                             <div class="medal-count">
                                 <span class="medal-icon">🥇</span>
-                                <span>${country.gold_medals || 0}</span>
+                                <span>${country.gold}</span>
                             </div>
                             <div class="medal-count">
                                 <span class="medal-icon">🥈</span>
-                                <span>${country.silver_medals || 0}</span>
+                                <span>${country.silver}</span>
                             </div>
                             <div class="medal-count">
                                 <span class="medal-icon">🥉</span>
-                                <span>${country.bronze_medals || 0}</span>
+                                <span>${country.bronze}</span>
                             </div>
                             <div class="medal-count">
                                 <span style="font-weight: bold; color: #0066cc;">TOT</span>
-                                <span>${country.total_medals || 0}</span>
+                                <span>${country.total}</span>
                             </div>
                         </div>
                     </div>
@@ -467,22 +551,22 @@
             content.innerHTML = html;
         }
 
-        // Aggiorna statistiche
+        // Statistiche
         function updateStats(data) {
             if (!data || data.length === 0) return;
 
-            const totalCountries = data.length;
-            const totalMedals = data.reduce((sum, c) => sum + (c.total_medals || 0), 0);
-            const totalGold = data.reduce((sum, c) => sum + (c.gold_medals || 0), 0);
+            const totalCountries = data.filter(c => c.total > 0).length;
+            const totalMedals = data.reduce((sum, c) => sum + c.total, 0);
+            const totalGold = data.reduce((sum, c) => sum + c.gold, 0);
 
             document.getElementById('stats').innerHTML = `
                 <div class="stat-item">
                     <div class="stat-value">${totalCountries}</div>
-                    <div class="stat-label">Nazioni</div>
+                    <div class="stat-label">Nazioni con Medaglie</div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-value">${totalMedals}</div>
-                    <div class="stat-label">Medaglie Totali</div>
+                    <div class="stat-label">Medaglie Assegnate</div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-value">${totalGold}</div>
@@ -491,138 +575,44 @@
             `;
         }
 
-        // Carica eventi
-        async function loadEvents() {
-            try {
-                console.log('Caricamento eventi...');
-                const today = new Date().toISOString().split('T')[0];
-                
-                // Eventi live
-                let response = await fetch(`${API.BASE}${API.EVENTS}?date=${today}&page=1`);
-                if (!response.ok) throw new Error('API eventi non disponibile');
-                
-                const result = await response.json();
-                eventsData = result.data || [];
-                
-                displayLiveEvents(eventsData);
-                displayUpcomingEvents(eventsData);
-                
-                console.log('Eventi caricati:', eventsData.length);
-            } catch (error) {
-                console.error('Errore caricamento eventi:', error);
-                const errorMsg = `
-                    <div class="error-message">
-                        ⚠️ Impossibile caricare gli eventi.<br>
-                        <small>Errore: ${error.message}</small>
+        // Eventi (placeholder per ora)
+        function loadEvents() {
+            const eventsHtml = `
+                <div class="event-card">
+                    <div class="event-header">
+                        <div class="event-time">⏰ 10:30</div>
+                        <div class="event-status">Live</div>
                     </div>
-                `;
-                document.getElementById('liveEvents').innerHTML = errorMsg;
-                document.getElementById('upcomingEvents').innerHTML = errorMsg;
-            }
-        }
-
-        // Visualizza eventi live
-        function displayLiveEvents(data) {
-            const content = document.getElementById('liveEvents');
-            const liveEvents = data.filter(e => e.is_live === 1 || e.status === 'LIVE');
+                    <div class="event-discipline">Sci Alpino</div>
+                    <div class="event-name">Discesa Libera - Uomini</div>
+                    <div class="event-venue">📍 Cortina d'Ampezzo</div>
+                </div>
+                <div class="event-card">
+                    <div class="event-header">
+                        <div class="event-time">⏰ 14:00</div>
+                        <div class="event-status">Live</div>
+                    </div>
+                    <div class="event-discipline">Hockey su Ghiaccio</div>
+                    <div class="event-name">ITA vs CAN - Semifinale</div>
+                    <div class="event-venue">📍 Milano - PalaItalia</div>
+                </div>
+            `;
             
-            if (liveEvents.length === 0) {
-                const finishedEvents = data.filter(e => e.status === 'Finished').slice(0, 8);
-                displayEventCards(content, finishedEvents, false);
-                return;
-            }
-
-            displayEventCards(content, liveEvents.slice(0, 8), true);
+            document.getElementById('liveEvents').innerHTML = eventsHtml;
+            document.getElementById('upcomingEvents').innerHTML = eventsHtml;
         }
 
-        // Visualizza prossimi eventi
-        function displayUpcomingEvents(data) {
-            const content = document.getElementById('upcomingEvents');
-            const upcoming = data.filter(e => 
-                e.status === 'Scheduled' || 
-                e.status === 'Running' ||
-                new Date(e.start_date) > new Date()
-            ).slice(0, 8);
-
-            displayEventCards(content, upcoming, false);
-        }
-
-        // Crea cards eventi
-        function displayEventCards(container, events, isLive) {
-            if (!events || events.length === 0) {
-                container.innerHTML = '<div class="error-message">Nessun evento disponibile</div>';
-                return;
-            }
-
-            let html = '';
-            events.forEach(event => {
-                const startTime = new Date(event.start_date).toLocaleTimeString('it-IT', { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                });
-                
-                const liveClass = event.is_live === 1 || isLive ? 'live' : '';
-                const statusText = event.is_live === 1 || isLive ? 'LIVE' : event.status || 'Programmato';
-                const statusClass = event.is_live === 1 || isLive ? 'live' : '';
-
-                let competitorsHtml = '';
-                if (event.competitors && event.competitors.length > 0) {
-                    competitorsHtml = '<div class="competitors">';
-                    event.competitors.slice(0, 4).forEach(comp => {
-                        competitorsHtml += `
-                            <div class="competitor">
-                                <img src="${comp.country_flag_url}" class="competitor-flag" 
-                                     onerror="this.style.display='none'">
-                                <span>${comp.competitor_name}</span>
-                            </div>
-                        `;
-                    });
-                    competitorsHtml += '</div>';
-                }
-
-                html += `
-                    <div class="event-card ${liveClass}">
-                        <div class="event-header">
-                            <div class="event-time">⏰ ${startTime}</div>
-                            <div class="event-status ${statusClass}">${statusText}</div>
-                        </div>
-                        <div class="event-discipline">${event.discipline_name}</div>
-                        <div class="event-name">${event.detailed_event_name || event.event_name}</div>
-                        <div class="event-venue">📍 ${event.venue_name}</div>
-                        ${competitorsHtml}
-                    </div>
-                `;
-            });
-
-            container.innerHTML = html;
-        }
-
-        // Inizializzazione
+        // Inizializza
         async function init() {
-            console.log('Inizializzazione dashboard...');
-            await Promise.all([loadMedals(), loadEvents()]);
+            console.log('🚀 Inizializzazione dashboard...');
+            await loadMedals();
+            loadEvents();
             
-            // Aggiornamento automatico
-            setInterval(async () => {
-                console.log('Aggiornamento dati...');
-                await Promise.all([loadMedals(), loadEvents()]);
-            }, API.UPDATE_INTERVAL);
+            // Auto refresh
+            setInterval(loadMedals, CONFIG.UPDATE_INTERVAL);
         }
 
-        // Avvia al caricamento
         window.addEventListener('DOMContentLoaded', init);
-
-        // Riconnetti quando la pagina torna visibile
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden) {
-                init();
-            }
-        });
-
-        // Gestione errori globali
-        window.addEventListener('unhandledrejection', event => {
-            console.error('Errore non gestito:', event.reason);
-        });
     </script>
 </body>
 </html>
