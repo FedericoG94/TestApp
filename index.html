@@ -228,7 +228,7 @@
             padding: 20px;
             overflow-y: auto;
             max-height: calc(100vh - 250px);
-            scroll-behavior: smooth;
+            /* rimosso scroll-behavior: smooth perché confligge con lo scroll JS */
             align-content: start;
         }
 
@@ -420,7 +420,8 @@
             overflow-y: auto;
             overflow-x: hidden;
             max-height: calc(100vh - 250px);
-            scroll-behavior: smooth;
+            /* rimosso scroll-behavior: smooth perché confligge con lo scroll JS */
+            scroll-behavior: auto; 
         }
 
         @media (max-width: 1400px) {
@@ -596,6 +597,31 @@
         .history-btn:hover {
             background: rgba(255, 255, 255, 0.3);
             transform: scale(1.05);
+        }
+
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            width: fit-content;
+            font-size: 0.9em;
+            transition: all 0.3s;
+            z-index: 10;
+        }
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+
+        .action-container {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 0 auto 15px auto;
+            flex-wrap: wrap;
         }
 
         .event-header {
@@ -927,6 +953,7 @@
             <div class="date-main" id="currentDate">Sabato 7 Febbraio 2026</div>
             <div class="date-sub">Giorno 1 delle Olimpiadi</div>
         </div>
+        <button id="autoScrollBtn" class="nav-btn" style="margin-right: 15px; display: flex; align-items: center; gap: 5px;" onclick="toggleAutoPlay()">⏸️ Pausa</button>
         <div class="live-indicator">🔴 LIVE</div>
     </div>
 
@@ -934,6 +961,9 @@
         <!-- Slide 1: Medagliere -->
         <div class="slide active" id="slide1">
             <h1 class="slide-title">🏅 MEDAGLIERE</h1>
+            <div class="action-container">
+                <button class="nav-btn" onclick="changeSlide(1)">Vai agli Eventi ➡️</button>
+            </div>
             <div class="stats-bar" id="stats"></div>
             <div class="medals-grid" id="medalsContent">
                 <div class="loading">
@@ -946,7 +976,10 @@
         <!-- Slide 2: Tutti Eventi -->
         <div class="slide" id="slide2">
             <h1 class="slide-title" style="margin-bottom: 5px;">📅 TUTTI GLI EVENTI - OGGI</h1>
-            <button id="historyBtn" class="history-btn" onclick="toggleHistory()">📜 Mostra eventi passati</button>
+            <div class="action-container">
+                <button class="nav-btn" onclick="changeSlide(0)">⬅️ Torna al Medagliere</button>
+                <button id="historyBtn" class="nav-btn" onclick="toggleHistory()">📜 Mostra eventi passati</button>
+            </div>
             <div class="events-grid" id="allEvents">
                 <div class="loading">
                     <div class="spinner"></div>
@@ -971,7 +1004,7 @@
             ],
             UPDATE_INTERVAL: 30000,     // 30 secondi per aggiornamenti live
             SLIDE_INTERVAL: 15000,      // 15 secondi tra le slide (solo medagliere)
-            SCROLL_SPEED: 2.5,          // Pixel per frame di scroll (aumentato per velocità)
+            SCROLL_SPEED: 5,          // Pixel per frame di scroll (aumentato per velocità)
             SCROLL_INTERVAL: 40,        // Millisecondi tra ogni frame di scroll
             PAUSE_AT_BOTTOM: 2000       // Pausa in millisecondi prima di cambiare slide
         };
@@ -1072,31 +1105,73 @@
         const slides = document.querySelectorAll('.slide');
         let scrollIntervals = {};
         let isScrolling = false;
+        let slideTimer = null;
+        let isAutoPlay = true;
 
         function updateStatus(message, type = 'normal') {
             console.log(`[${new Date().toLocaleTimeString()}] ${type.toUpperCase()}: ${message}`);
+        }
+
+        function toggleAutoPlay() {
+            isAutoPlay = !isAutoPlay;
+            const btn = document.getElementById('autoScrollBtn');
+            if (btn) {
+                btn.innerHTML = isAutoPlay ? '⏸️ Pausa' : '▶️ Riprendi';
+                btn.style.background = isAutoPlay ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 50, 50, 0.6)';
+            }
+            
+            if (isAutoPlay) {
+                // Se riattiviamo, riprendiamo dalla slide corrente
+                resetSlide(currentSlide);
+            } else {
+                // Se mettiamo in pausa, fermiamo tutto
+                stopAllScrolling();
+            }
         }
 
         function nextSlide() {
             // Ferma tutti gli scroll attivi
             stopAllScrolling();
             
+            // Se siamo in pausa o abbiamo aperto la cronologia, non cambiare slide automaticamente
+            if (!isAutoPlay || showPastEvents) return;
+            
             slides[currentSlide].classList.remove('active');
             currentSlide = (currentSlide + 1) % slides.length;
             slides[currentSlide].classList.add('active');
             
             // Reset scroll position della nuova slide
-            const container = slides[currentSlide].querySelector('.events-grid, .medals-grid');
+            resetSlide(currentSlide);
+        }
+
+        function changeSlide(index) {
+            if (index < 0 || index >= slides.length) return;
+            
+            stopAllScrolling();
+            
+            slides[currentSlide].classList.remove('active');
+            currentSlide = index;
+            slides[currentSlide].classList.add('active');
+            
+            // Se cambio manualmente, riparto sempre col timer (se l'autoplay è attivo)
+            resetSlide(currentSlide);
+        }
+
+        function resetSlide(index) {
+            // Reset scroll position della nuova slide
+            const container = slides[index].querySelector('.events-grid, .medals-grid');
             if (container) {
                 container.scrollTop = 0;
             }
             
+            if (!isAutoPlay) return;
+            
             // Avvia auto-scroll se è una slide di eventi
-            if (currentSlide === 1) {
-                setTimeout(() => startAutoScroll(slides[currentSlide]), 500);
+            if (index === 1) {
+                slideTimer = setTimeout(() => startAutoScroll(slides[index]), 500);
             } else {
                 // Solo per il medagliere, usa il timer fisso
-                setTimeout(nextSlide, CONFIG.SLIDE_INTERVAL);
+                slideTimer = setTimeout(nextSlide, CONFIG.SLIDE_INTERVAL);
             }
         }
 
@@ -1104,6 +1179,11 @@
             Object.values(scrollIntervals).forEach(intervalId => clearInterval(intervalId));
             scrollIntervals = {};
             isScrolling = false;
+            
+            if (slideTimer) {
+                clearTimeout(slideTimer);
+                slideTimer = null;
+            }
         }
 
         function startAutoScroll(slideElement) {
@@ -1130,7 +1210,9 @@
                 if (maxScroll <= 0) {
                     // Nessuno scroll necessario, passa subito alla slide successiva
                     clearInterval(scrollIntervals[slideId]);
-                    setTimeout(nextSlide, CONFIG.PAUSE_AT_BOTTOM);
+                    if (isAutoPlay) {
+                        slideTimer = setTimeout(nextSlide, CONFIG.PAUSE_AT_BOTTOM);
+                    }
                     return;
                 }
                 
@@ -1141,7 +1223,9 @@
                     // Raggiunto il fondo, pausa e poi passa alla slide successiva
                     clearInterval(scrollIntervals[slideId]);
                     isScrolling = false;
-                    setTimeout(nextSlide, CONFIG.PAUSE_AT_BOTTOM);
+                    if (isAutoPlay) {
+                        slideTimer = setTimeout(nextSlide, CONFIG.PAUSE_AT_BOTTOM);
+                    }
                 }
             }, CONFIG.SCROLL_INTERVAL);
         }
